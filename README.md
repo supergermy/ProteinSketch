@@ -1,52 +1,104 @@
-# ProteinSketch RFdiffusion Patch
+# Protein*Sketch*
 
 <p align="center">
-  <img src="figs/main_figure.png" alt="ProteinSketch RFdiffusion volume-conditioning overview" width="100%">
+  <img src="figs/main_figure.png" alt="ProteinSketch overview" width="1100px" align="middle"/>
 </p>
 
-RFdiffusion patch for ProteinSketch, a VR-assisted protein design workflow that turns user-sketched backbone topologies and volumetric envelopes into diffusion-ready spatial constraints for de novo monomer and binder design. This repository adds ProteinSketch JSON input, embedded OpenVDB SDF volume support, volume-guided potentials, and partial-diffusion refinement utilities to the official RFdiffusion codebase.
+## Description
 
-Base RFdiffusion commit:
+ProteinSketch is a VR-assisted protein design workflow for translating a designer's spatial intent into protein with RFdiffusion. Designers can sketch backbone topologies and volumetric envelopes in 3D, then use those sketches to guide *de novo* monomer design, binder design, and partial-diffusion refinement.
 
-```text
-2d0c003df46b9db41d119321f15403dec3716cd9
-```
+This repository provides the RFdiffusion-side patch for ProteinSketch. It adds support for ProteinSketch JSON input, embedded OpenVDB SDF volumes, volume-guided potentials, inferred contig lengths from sketched envelopes, and sketch-derived partial diffusion.
 
-## Install
+ProteinSketch JSON input can be made from https://proteinsketch.app or https://proteinsketch.com with VR headset (non-VR version is coming soon).
 
-Install RFdiffusion, model weights, and dependencies from the official
-RFdiffusion repository.
+## Documentation
+
+This patch builds on the official [RFdiffusion](https://github.com/RosettaCommons/RFdiffusion) codebase.
+
+For general RFdiffusion usage, model weights, and installation details, see the official RFdiffusion repository and documentation. This README only documents the ProteinSketch-specific patch and JSON/OpenVDB input workflow.
+
+----
+
+# Table of contents
+
+- [Protein*Sketch*](#proteinsketch)
+  - [Description](#description)
+  - [Documentation](#documentation)
+- [Getting started / installation](#getting-started--installation)
+  - [Base RFdiffusion version](#base-rfdiffusion-version)
+  - [Install OpenVDB support](#install-openvdb-support)
+  - [Apply the ProteinSketch patch](#apply-the-proteinsketch-patch)
+- [Usage](#usage)
+  - [ProteinSketch JSON input](#proteinsketch-json-input)
+  - [Running volume-conditioned monomer or binder design](#running-volume-conditioned-monomer-or-binder-design)
+  - [Two-step binder design](#two-step-binder-design)
+  - [Partial diffusion for sketch refinement](#partial-diffusion-for-sketch-refinement)
+  - [Examples](#examples)
+- [Files](#files)
+
+----
+
+# Getting started / installation
+
+ProteinSketch is distributed as a patch to RFdiffusion. First install RFdiffusion, model weights, and dependencies from the official repository:
 
 ```text
 https://github.com/RosettaCommons/RFdiffusion
 ```
 
-Use RFdiffusion conda environment `SE3nv`; Install `pyopenvdb` so the
-JSON-embedded OpenVDB grid can be decoded.
+## Base RFdiffusion version
+
+This patch is intended for the following RFdiffusion commit:
+
+```text
+2d0c003df46b9db41d119321f15403dec3716cd9
+```
+
+Start from a clean RFdiffusion checkout:
+
+```bash
+git clone https://github.com/RosettaCommons/RFdiffusion.git
+cd RFdiffusion
+git checkout 2d0c003df46b9db41d119321f15403dec3716cd9
+```
+
+## Install OpenVDB support
+
+ProteinSketch stores volumetric envelopes as OpenVDB SDF grids embedded in JSON files. Use the RFdiffusion conda environment and install OpenVDB support:
 
 ```bash
 conda activate SE3nv
 conda install conda-forge::openvdb
 ```
 
-Apply this patch from the patch repository:
+## Apply the ProteinSketch patch
+
+Apply the patch from this repository:
 
 ```bash
-cd RFdiffusion
-git checkout 2d0c003df46b9db41d119321f15403dec3716cd9
-
-curl -fsSL -o /tmp/px-rfdiffusion.patch \
+curl -fsSL -o /tmp/proteinsketch-rfdiffusion.patch \
   https://raw.githubusercontent.com/supergermy/ProteinSketch/main/patches/px-rfdiffusion.patch
 
-git apply --whitespace=nowarn --check /tmp/px-rfdiffusion.patch
-git apply --whitespace=nowarn /tmp/px-rfdiffusion.patch
+git apply --whitespace=nowarn --check /tmp/proteinsketch-rfdiffusion.patch
+git apply --whitespace=nowarn /tmp/proteinsketch-rfdiffusion.patch
 ```
 
-## ProteinSketch JSON/OpenVDB input
+----
 
-Use `inference.sketch_json` to point RFdiffusion at a ProteinSketch JSON file
-that may contain a target PDB, a sketched backbone, and/or an embedded OpenVDB
-SDF volume. JSON file looks like:
+# Usage
+
+ProteinSketch adds a JSON-based interface to RFdiffusion. The main entry point is still RFdiffusion's inference script, but designs can now be conditioned by ProteinSketch outputs through `inference.sketch_json`.
+
+## ProteinSketch JSON input
+
+ProteinSketch JSON files can contain three major sections:
+
+- `target`: target PDB and optional hotspot residues for binder design
+- `backbone`: sketched backbone PDB for partial diffusion
+- `volume`: OpenVDB SDF envelope for volume-conditioned generation
+
+A typical JSON file looks like this:
 
 ```json
 {
@@ -57,8 +109,8 @@ SDF volume. JSON file looks like:
         {
             "format": "PDB",
             "encoding": "utf-8",
-            "data": "HELIX    1  H1 GLY A   70  GLY A   72  1 ...", # if exists, used as `inference.input_pdb` (i.e., target)
-            "hotspots": [ # if exists, used as `ppi.hotspot_res`
+            "data": "HELIX    1  H1 GLY A   70  GLY A   72  1 ...",
+            "hotspots": [
                 "A392",
                 "A394",
                 "A421",
@@ -66,39 +118,39 @@ SDF volume. JSON file looks like:
             ]
         }
     ],
-    "backbone": [], # if exists, used as `inference.input_pdb` (i.e., motif)
+    "backbone": [],
     "volume": [
         {
             "format": "OpenVDB",
             "encoding": "base64",
-            "estimatedResidueCountRange": { # if exists, used as `contigmap.contigs`
+            "estimatedResidueCountRange": {
                 "min": 329,
                 "max": 342
             },
-            "data": "niuLyrzVXCazo/B6gKDBo3UMo+..." # hashed SDF values
+            "data": "niuLyrzVXCazo/B6gKDBo3UMo+..."
         }
     ]
 }
 ```
 
-An empty list means null. Normally `volume` contains one dictionary. If an
-example file contains multiple volume entries, treat them as independent
-examples; the default uses `volume[0]`, and `inference.sketch_json_volume_index`
-can select another entry.
-
-Design mode is inferred from populated sections:
+Empty lists are treated as null values. The design mode is inferred from the populated sections:
 
 ```text
-# [] means empty. e.g., above JSON's backbone is empty
 target=[]  backbone=[]  volume!=[]  -> monomer design with volume potential
 target!=[] backbone=[]  volume!=[]  -> binder design with volume potential
-target=[]  backbone!=[]             -> monomer partial diffusion without volume potential
-target!=[] backbone!=[]             -> binder partial diffusion without volume potential
+target=[]  backbone!=[]             -> monomer partial diffusion
+target!=[] backbone!=[]             -> binder partial diffusion
 ```
 
-## Unified schema for monomer and binder design
+If a JSON file contains multiple volume entries, ProteinSketch uses `volume[0]` by default. Another entry can be selected with:
 
-As described above, `.json` defines which design to run (monomer or binder).
+```text
+inference.sketch_json_volume_index=<index>
+```
+
+## Running volume-conditioned monomer or binder design
+
+To run RFdiffusion with a ProteinSketch JSON file:
 
 ```bash
 python scripts/run_inference.py --config-name voxel \
@@ -107,11 +159,21 @@ python scripts/run_inference.py --config-name voxel \
   inference.num_designs=2
 ```
 
-Override `contigmap.contigs` when you want a custom design length.
+If the JSON contains only a volume, RFdiffusion runs monomer design with volume conditioning. If the JSON contains both a target and a volume, RFdiffusion runs binder design with volume conditioning.
 
-## Two-step binder run
+ProteinSketch can infer `contigmap.contigs` from the estimated residue count stored in the JSON volume. You can override the inferred length manually (see [Examples](#examples)):
 
-For binder design from JSON target + volume, two-step is recommended:
+```bash
+python scripts/run_inference.py --config-name voxel \
+  inference.sketch_json=/path/to/PROTEINSKETCH_VDB.json \
+  'contigmap.contigs=[150-170]' \
+  inference.output_prefix=outputs/json_vdb/custom_length \
+  inference.num_designs=2
+```
+
+## Two-step binder design
+
+For target + volume binder design, the two-step workflow is recommended:
 
 ```bash
 python scripts/two-step/run_inference_json_twostep.py \
@@ -120,45 +182,43 @@ python scripts/two-step/run_inference_json_twostep.py \
   inference.num_designs=2
 ```
 
-The two-step workflow first samples monomer backbones with the VDB volume
-potentials enabled. After the monomer stage, each generated monomer is moved
-back into the original target coordinate frame and combined with the target PDB
-from the JSON input. The binder stage then runs partial diffusion on that
-target-frame complex, refining the generated binder while keeping the target in
-its original position.
+The first stage samples binder-like monomer backbones under the sketched volume potential. The generated backbones are then transformed back into the original target coordinate frame and combined with the target PDB from the JSON input. The second stage runs partial diffusion on the target-frame complex to refine the binder while preserving the target placement.
 
-## Examples
+## Partial diffusion for sketch refinement
 
-Example scripts live in `examples/`. Set `RFDIFFUSION_DIR` to a patched
-RFdiffusion checkout and `SKETCH_JSON` to a ProteinSketch JSON file.
-
-- `examples/sdf_cutoff_override.sh` shows how to change the VDB SDF shell band
-  with `inference.volume_sketch_cutoff`, `inference.volume_sketch_max_sdf`, and
-  `inference.sketch_json_volume_index`.
-- `examples/potential_weight_override_monomer.sh` runs one-step monomer design
-  from volume-only JSON while overriding monomer volume potential weights.
-- `examples/potential_weight_override_binder.sh` runs one-step binder design
-  from target + volume JSON while overriding binder volume potential weights and
-  interface weight.
-- `examples/potential_weight_override_twostep.sh` runs the two-step target +
-  volume workflow while overriding monomer volume weights, binder volume
-  weights, and interface weight.
-- `examples/contig_override.sh` shows how to override the automatically inferred
-  `contigmap.contigs`, for example to set a custom design length or explicit
-  target/binder contig.
-
-## T=2 refinement (partial diffusion)
-
-ProteinSketch supports T=2 RFdiffusion partial diffusion for fast backbone
-regularization of sketch-derived inputs.
+ProteinSketch also supports sketch-derived backbone refinement with RFdiffusion partial diffusion. This is useful for regularizing manually sketched backbones while preserving the intended topology.
 
 ```bash
 python scripts/run_inference.py \
   --config-name oneshot \
-  inference.input_pdb=/path/to/input.pdb \
+  inference.input_pdb=/path/to/input.pdb
 ```
 
-## Files
+The `oneshot` configuration is intended for fast partial-diffusion refinement of sketch-derived structures.
+
+## Examples
+
+Example scripts are provided in `examples/`. Set `RFDIFFUSION_DIR` to a patched RFdiffusion checkout and `SKETCH_JSON` to a ProteinSketch JSON file before running them.
+
+```text
+examples/sdf_cutoff_override.sh
+examples/potential_weight_override_monomer.sh
+examples/potential_weight_override_binder.sh
+examples/potential_weight_override_twostep.sh
+examples/contig_override.sh
+```
+
+These examples show how to:
+
+- change the VDB SDF shell band with `inference.volume_sketch_cutoff`
+- select a volume entry with `inference.sketch_json_volume_index`
+- override monomer and binder volume-potential weights
+- override interface weights for binder design
+- manually override inferred `contigmap.contigs`
+
+----
+
+# Files
 
 ```text
 patches/px-rfdiffusion.patch

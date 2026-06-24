@@ -457,7 +457,7 @@ index dcf1a10..d671098 100644
 +            cyclic_reses=cyclic_reses,
 +        )
 diff --git a/rfdiffusion/inference/model_runners.py b/rfdiffusion/inference/model_runners.py
-index 2bd0d53..2afc799 100644
+index 2bd0d53..86f4506 100644
 --- a/rfdiffusion/inference/model_runners.py
 +++ b/rfdiffusion/inference/model_runners.py
 @@ -289,6 +289,11 @@ class Sampler:
@@ -820,7 +820,7 @@ index 2bd0d53..2afc799 100644
 +
 +class VoxelSampler(SelfConditioning):
 +    """
-+    Self-conditioning sampler used by ProteinSketch JSON/VDB-guided inference.
++    Self-conditioning sampler used by ProteinSketch2AI VDB-guided inference.
 +    """
 +
 +    def process_target_for_init(self):
@@ -833,7 +833,7 @@ index 2bd0d53..2afc799 100644
      """
      Model Runner for Scaffold-Constrained diffusion
 diff --git a/rfdiffusion/inference/utils.py b/rfdiffusion/inference/utils.py
-index 3fb1411..cbb217a 100644
+index 3fb1411..6a6f7e4 100644
 --- a/rfdiffusion/inference/utils.py
 +++ b/rfdiffusion/inference/utils.py
 @@ -1,5 +1,6 @@
@@ -876,7 +876,7 @@ index 3fb1411..cbb217a 100644
  
          # add the delta to the new frames
          frames_next = torch.from_numpy(frames_next) + ca_deltas[:, None, :]  # translate
-@@ -501,7 +505,291 @@ class Denoise:
+@@ -501,7 +505,292 @@ class Denoise:
          return fullatom_next.squeeze()[:, :14, :], px0
  
  
@@ -922,7 +922,7 @@ index 3fb1411..cbb217a 100644
 +def _joined_contig_ranges(pdb_path: Path) -> str:
 +    ranges = volume_sketch.protein_contig_ranges(pdb_path)
 +    if not ranges:
-+        raise ValueError(f"ProteinSketch JSON target has no CA residues: {pdb_path}")
++        raise ValueError(f"ProteinSketch2AI target has no CA residues: {pdb_path}")
 +    return "/0 ".join(ranges)
 +
 +
@@ -933,7 +933,8 @@ index 3fb1411..cbb217a 100644
 +    )
 +    if length_range is None:
 +        raise ValueError(
-+            "ProteinSketch JSON volume auto-contig requires estimatedResidueCountRange, "
++            "ProteinSketch2AI volume auto-contig requires estimatedMinResidueLength "
++            "and estimatedMaxResidueLength, "
 +            "or set contigmap.contigs explicitly."
 +        )
 +    return length_range
@@ -961,7 +962,7 @@ index 3fb1411..cbb217a 100644
 +            if hotspots:
 +                conf.ppi.hotspot_res = hotspots
 +                logging.getLogger(__name__).info(
-+                    "ProteinSketch JSON hotspots override ppi.hotspot_res: %s",
++                    "ProteinSketch2AI hotspots override ppi.hotspot_res: %s",
 +                    ",".join(hotspots),
 +                )
 +
@@ -1012,14 +1013,14 @@ index 3fb1411..cbb217a 100644
 +                f"{backbone_len}-{backbone_len}/0 {_joined_contig_ranges(target_path)}"
 +            ]
 +        logging.getLogger(__name__).info(
-+            "ProteinSketch JSON auto contigmap.contigs: %s",
++            "ProteinSketch2AI auto contigmap.contigs: %s",
 +            conf.contigmap.contigs,
 +        )
 +
 +    if has_volume and _is_missing(_cfg_get(conf.potentials, "guiding_potentials", None)):
 +        conf.potentials.guiding_potentials = _default_volume_sketch_potentials(mode)
 +        logging.getLogger(__name__).info(
-+            "ProteinSketch JSON default guiding_potentials (%s): %s",
++            "ProteinSketch2AI default guiding_potentials (%s): %s",
 +            mode,
 +            conf.potentials.guiding_potentials,
 +        )
@@ -1168,7 +1169,7 @@ index 3fb1411..cbb217a 100644
      if conf.scaffoldguided.scaffoldguided:
          sampler = model_runners.ScaffoldedSampler(conf)
      else:
-@@ -511,6 +799,11 @@ def sampler_selector(conf: DictConfig):
+@@ -511,6 +800,11 @@ def sampler_selector(conf: DictConfig):
              sampler = model_runners.SelfConditioning(conf)
          elif conf.inference.model_runner == "ScaffoldedSampler":
              sampler = model_runners.ScaffoldedSampler(conf)
@@ -1180,7 +1181,7 @@ index 3fb1411..cbb217a 100644
          else:
              raise ValueError(f"Unrecognized sampler {conf.model_runner}")
      return sampler
-@@ -610,12 +903,14 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
+@@ -610,12 +904,14 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True):
      return out
  
  
@@ -1365,7 +1366,7 @@ index 98b0d5e..8066ea1 100644
  
  
 diff --git a/rfdiffusion/potentials/potentials.py b/rfdiffusion/potentials/potentials.py
-index b43a2a6..fd5b97d 100644
+index b43a2a6..4409d42 100644
 --- a/rfdiffusion/potentials/potentials.py
 +++ b/rfdiffusion/potentials/potentials.py
 @@ -1,6 +1,8 @@
@@ -1634,10 +1635,8 @@ index b43a2a6..fd5b97d 100644
 +                           'volume_sketch_shell_nearest_binder_distance': volume_sketch_shell_nearest_binder_distance}
  
  require_binderlen      = { 'binder_ROG',
--                           'binder_distance_ReLU',
--                           'binder_any_ReLU',
-+                           'binder_distance_ReLU',
-+                           'binder_any_ReLU',
+                            'binder_distance_ReLU',
+                            'binder_any_ReLU',
                             'dimer_ROG',
                             'binder_ncontacts',
 -                           'interface_ncontacts'}
@@ -1654,10 +1653,10 @@ index b43a2a6..fd5b97d 100644
 +                               'volume_sketch_shell_nearest_binder_distance'}
 diff --git a/rfdiffusion/volume_sketch.py b/rfdiffusion/volume_sketch.py
 new file mode 100644
-index 0000000..9b80d5b
+index 0000000..fcefa6e
 --- /dev/null
 +++ b/rfdiffusion/volume_sketch.py
-@@ -0,0 +1,549 @@
+@@ -0,0 +1,570 @@
 +from __future__ import annotations
 +
 +import base64
@@ -1676,6 +1675,15 @@ index 0000000..9b80d5b
 +
 +_PROTEINSKETCH_JSON_CACHE: dict[str, dict] = {}
 +_VOLUME_SKETCH_RAW_POINTS_CACHE: dict[tuple, tuple[np.ndarray, list]] = {}
++_PROTEINSKETCH_FORMATS = {"ProteinSketch2AI", "ProteinSketchOutput"}
++_PROTEINSKETCH_SECTION_KEYS = {
++    "target": ("targets", "target"),
++    "targets": ("targets", "target"),
++    "backbone": ("backbones", "backbone"),
++    "backbones": ("backbones", "backbone"),
++    "volume": ("volumes", "volume"),
++    "volumes": ("volumes", "volume"),
++}
 +
 +
 +def clear_volume_sketch_cache() -> None:
@@ -1701,20 +1709,27 @@ index 0000000..9b80d5b
 +    with path.open("r", encoding="utf-8-sig") as handle:
 +        payload = json.load(handle)
 +    if not isinstance(payload, dict):
-+        raise ValueError(f"ProteinSketch JSON root must be an object: {path}")
-+    if payload.get("format") != "ProteinSketchOutput":
-+        raise ValueError(f"Input JSON is not a ProteinSketchOutput file: {path}")
++        raise ValueError(f"ProteinSketch2AI root must be an object: {path}")
++    if payload.get("format") not in _PROTEINSKETCH_FORMATS:
++        raise ValueError(f"Input file is not a ProteinSketch2AI file: {path}")
 +
 +    _PROTEINSKETCH_JSON_CACHE[cache_key] = payload
 +    return payload
 +
 +
 +def _proteinsketch_section_items(payload: dict, section: str) -> list[dict]:
-+    value = payload.get(section)
++    section_keys = _PROTEINSKETCH_SECTION_KEYS.get(section, (section,))
++    key = section_keys[0]
++    value = None
++    for candidate in section_keys:
++        if candidate in payload:
++            key = candidate
++            value = payload.get(candidate)
++            break
 +    if value is None:
 +        return []
 +    if not isinstance(value, list):
-+        raise ValueError(f"ProteinSketch JSON section {section!r} must be a list or null")
++        raise ValueError(f"ProteinSketch2AI section {key!r} must be a list or null")
 +    return [item for item in value if isinstance(item, dict)]
 +
 +
@@ -1728,23 +1743,23 @@ index 0000000..9b80d5b
 +
 +def _proteinsketch_item_text(item: dict, section: str, json_path) -> str:
 +    if "data" not in item:
-+        raise ValueError(f"ProteinSketch JSON {section} entry has no PDB data: {json_path}")
++        raise ValueError(f"ProteinSketch2AI {section} entry has no PDB data: {json_path}")
 +    text = item["data"]
 +    encoding = str(item.get("encoding", "utf-8")).lower()
 +    if encoding == "base64":
 +        text = base64.b64decode(text).decode("utf-8")
 +    if not isinstance(text, str) or "ATOM" not in text:
-+        raise ValueError(f"ProteinSketch JSON {section} entry is not PDB text: {json_path}")
++        raise ValueError(f"ProteinSketch2AI {section} entry is not PDB text: {json_path}")
 +    return text if text.endswith("\n") else text + "\n"
 +
 +
 +def proteinsketch_pdb_text(json_path, section: str, index: int = 0) -> str:
 +    items = proteinsketch_section_items(json_path, section)
 +    if index < 0 or index >= len(items):
-+        raise ValueError(f"ProteinSketch JSON has no {section}[{index}] entry: {json_path}")
++        raise ValueError(f"ProteinSketch2AI has no {section}[{index}] entry: {json_path}")
 +    item = items[index]
 +    if str(item.get("format", "PDB")).upper() != "PDB":
-+        raise ValueError(f"ProteinSketch JSON {section}[{index}] is not PDB format: {json_path}")
++        raise ValueError(f"ProteinSketch2AI {section}[{index}] is not PDB format: {json_path}")
 +    return _proteinsketch_item_text(item, section, json_path)
 +
 +
@@ -1838,7 +1853,12 @@ index 0000000..9b80d5b
 +    items = proteinsketch_section_items(json_path, "volume")
 +    if volume_index < 0 or volume_index >= len(items):
 +        return None
-+    value = items[volume_index].get("estimatedResidueCountRange")
++    item = items[volume_index]
++    min_len = item.get("estimatedMinResidueLength")
++    max_len = item.get("estimatedMaxResidueLength")
++    if min_len is not None and max_len is not None:
++        return f"{int(min_len)}-{int(max_len)}"
++    value = item.get("estimatedResidueCountRange")
 +    if isinstance(value, dict) and "min" in value and "max" in value:
 +        return f"{int(value['min'])}-{int(value['max'])}"
 +    return None
@@ -1856,7 +1876,7 @@ index 0000000..9b80d5b
 +        return "binder"
 +    if has_volume:
 +        return "monomer"
-+    raise ValueError(f"ProteinSketch JSON has no usable target/backbone/volume input: {json_path}")
++    raise ValueError(f"ProteinSketch2AI has no usable targets/backbones/volumes input: {json_path}")
 +
 +
 +def protein_contig_ranges(pdb_path) -> list[str]:
@@ -1898,12 +1918,12 @@ index 0000000..9b80d5b
 +def _proteinsketch_vdb_payload(json_path, volume_index: int = 0) -> dict:
 +    volume_items = proteinsketch_section_items(json_path, "volume")
 +    if volume_index < 0 or volume_index >= len(volume_items):
-+        raise ValueError(f"ProteinSketch JSON has no volume[{volume_index}] object: {json_path}")
++        raise ValueError(f"ProteinSketch2AI has no volumes[{volume_index}] object: {json_path}")
 +    vdb_payload = volume_items[volume_index]
 +    if vdb_payload.get("format") != "OpenVDB":
-+        raise ValueError(f"ProteinSketch JSON volume[{volume_index}] is not OpenVDB data: {json_path}")
++        raise ValueError(f"ProteinSketch2AI volumes[{volume_index}] is not OpenVDB data: {json_path}")
 +    if vdb_payload.get("encoding") != "base64":
-+        raise ValueError(f"ProteinSketch JSON volume[{volume_index}].encoding must be base64: {json_path}")
++        raise ValueError(f"ProteinSketch2AI volumes[{volume_index}].encoding must be base64: {json_path}")
 +    return vdb_payload
 +
 +
@@ -1915,7 +1935,7 @@ index 0000000..9b80d5b
 +    vdb_payload = _proteinsketch_vdb_payload(json_path, volume_index=volume_index)
 +    data = vdb_payload.get("data")
 +    if not isinstance(data, str) or not data.strip():
-+        raise ValueError(f"ProteinSketch JSON has empty volume[{volume_index}].data: {json_path}")
++        raise ValueError(f"ProteinSketch2AI has empty volumes[{volume_index}].data: {json_path}")
 +    return base64.b64decode(data)
 +
 +
@@ -2085,7 +2105,7 @@ index 0000000..9b80d5b
 +
 +    grid = _vdb_shell_grid(json_path, cutoff=cutoff, max_sdf=max_sdf, volume_index=int(volume_index))
 +    if grid.shell_points.size == 0:
-+        raise ValueError(f"No VDB shell points found in ProteinSketch JSON {json_path}")
++        raise ValueError(f"No VDB shell points found in ProteinSketch2AI {json_path}")
 +    raw = (grid.shell_points.astype(np.float32), [grid])
 +    _VOLUME_SKETCH_RAW_POINTS_CACHE[cache_key] = raw
 +    return raw
@@ -2104,7 +2124,7 @@ index 0000000..9b80d5b
 +) -> tuple[torch.Tensor, list]:
 +    backend = str(backend or "vdb").strip().lower()
 +    if backend != "vdb":
-+        raise ValueError("ProteinSketch JSON branch supports only backend='vdb'")
++        raise ValueError("ProteinSketch2AI branch supports only backend='vdb'")
 +
 +    shift = np.zeros(3, dtype=np.float32)
 +    if target_center is not None:
@@ -2157,7 +2177,7 @@ index 0000000..9b80d5b
 +    inside = np.zeros(coords.shape[0], dtype=bool)
 +    backend = None if backend is None else str(backend).strip().lower()
 +    if backend not in {None, "vdb"}:
-+        raise ValueError("ProteinSketch JSON branch supports only backend='vdb'")
++        raise ValueError("ProteinSketch2AI branch supports only backend='vdb'")
 +    for geometry in geometries:
 +        if not isinstance(geometry, SketchVDBGrid):
 +            raise TypeError(f"Unknown ProteinSketch geometry: {geometry!r}")
@@ -2796,12 +2816,12 @@ index 0000000..f60dcbe
 +    sampler.potential_conf.guide_decay = guide_decay
 diff --git a/scripts/two-step/run_inference_json_twostep.py b/scripts/two-step/run_inference_json_twostep.py
 new file mode 100644
-index 0000000..22da823
+index 0000000..66d4f01
 --- /dev/null
 +++ b/scripts/two-step/run_inference_json_twostep.py
-@@ -0,0 +1,556 @@
+@@ -0,0 +1,559 @@
 +#!/usr/bin/env python3
-+"""ProteinSketch JSON two-step RFdiffusion entrypoint."""
++"""ProteinSketch2AI two-step RFdiffusion entrypoint."""
 +
 +from __future__ import annotations
 +
@@ -2871,26 +2891,26 @@ index 0000000..22da823
 +def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 +    default_config = REPO_ROOT / "config" / "inference" / "voxel.yaml"
 +    parser = argparse.ArgumentParser(
-+        description="Run monomer -> intermediate -> binder inference from ProteinSketch JSON.",
++        description="Run monomer -> intermediate -> binder inference from ProteinSketch2AI .ps2ai.",
 +        formatter_class=argparse.RawDescriptionHelpFormatter,
 +        epilog=(
 +            "Minimal example:\n"
 +            "  python scripts/two-step/run_inference_json_twostep.py \\\n"
-+            "    inference.sketch_json=proteinsketch.json \\\n"
-+            "    inference.output_prefix=outputs/two_step_json/binder \\\n"
++            "    inference.sketch_json=proteinsketch.ps2ai \\\n"
++            "    inference.output_prefix=outputs/two_step_ps2ai/binder \\\n"
 +            "    inference.num_designs=10"
 +        ),
 +    )
 +
 +    paths = parser.add_argument_group("paths")
 +    paths.add_argument("--config", default=str(default_config), help="Inference YAML config")
-+    paths.add_argument("--outpath", default=None, help="Default: outputs/two_step_<json_stem>")
++    paths.add_argument("--outpath", default=None, help="Default: outputs/two_step_<ps2ai_stem>")
 +    paths.add_argument("--monomer-output-prefix", default=None, help="Default: <outpath>/monomer")
 +    paths.add_argument("--binder-output-prefix", default=None, help="Default: <outpath>/binder")
 +    paths.add_argument("--intermediate-dir", default=None, help="Default: <outpath>/intermediate")
 +
 +    stage = parser.add_argument_group("stage controls")
-+    stage.add_argument("--monomer-contig", default=None, help="Default: volume estimatedResidueCountRange")
++    stage.add_argument("--monomer-contig", default=None, help="Default: volume estimatedMinResidueLength-estimatedMaxResidueLength")
 +    stage.add_argument("--monomer-num-designs", type=int, default=None)
 +    stage.add_argument("--monomer-design-startnum", type=int, default=None)
 +    stage.add_argument("--partial-T", type=int, default=None)
@@ -3037,9 +3057,9 @@ index 0000000..22da823
 +    if not args.sketch_json:
 +        raise ValueError("Two-step ProteinSketch inference requires inference.sketch_json")
 +    if not volume_sketch.proteinsketch_has_section(args.sketch_json, "target"):
-+        raise ValueError("Two-step ProteinSketch JSON requires target[0] PDB data")
++        raise ValueError("Two-step ProteinSketch2AI requires targets[0] PDB data")
 +    if not volume_sketch.proteinsketch_has_section(args.sketch_json, "volume"):
-+        raise ValueError("Two-step ProteinSketch JSON requires volume[0] OpenVDB data")
++        raise ValueError("Two-step ProteinSketch2AI requires volumes[0] OpenVDB data")
 +    if args.monomer_num_designs < 1:
 +        raise ValueError("--monomer-num-designs must be >= 1")
 +    if args.monomer_design_startnum < 0:
@@ -3098,7 +3118,7 @@ index 0000000..22da823
 +def validate_paths(paths: PipelinePaths) -> None:
 +    for label, path in {
 +        "config": paths.config,
-+        "ProteinSketch JSON": paths.sketch_json,
++        "ProteinSketch2AI": paths.sketch_json,
 +        "target PDB": paths.target_pdb,
 +    }.items():
 +        if not path.exists():
@@ -3223,7 +3243,10 @@ index 0000000..22da823
 +            volume_index=args.sketch_json_volume_index,
 +        )
 +        if length_range is None:
-+            raise ValueError("ProteinSketch JSON volume requires estimatedResidueCountRange or --monomer-contig")
++            raise ValueError(
++                "ProteinSketch2AI volume requires estimatedMinResidueLength and "
++                "estimatedMaxResidueLength or --monomer-contig"
++            )
 +        monomer_contig = f"[{length_range}]"
 +    logging.info("Output directory: %s", paths.outpath)
 +    logging.info("Monomer contig: %s", normalize_contig(monomer_contig))
@@ -3358,10 +3381,10 @@ index 0000000..22da823
 +    main()
 diff --git a/tests/test_proteinsketch_json.py b/tests/test_proteinsketch_json.py
 new file mode 100644
-index 0000000..445268f
+index 0000000..b46fed3
 --- /dev/null
 +++ b/tests/test_proteinsketch_json.py
-@@ -0,0 +1,458 @@
+@@ -0,0 +1,456 @@
 +import base64
 +import json
 +import os
@@ -3425,7 +3448,7 @@ index 0000000..445268f
 +
 +
 +def _write_json(payload) -> Path:
-+    handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
++    handle = tempfile.NamedTemporaryFile("w", suffix=".ps2ai", delete=False)
 +    json.dump(payload, handle)
 +    handle.close()
 +    return Path(handle.name)
@@ -3437,19 +3460,17 @@ index 0000000..445268f
 +        "format": "OpenVDB",
 +        "encoding": "base64",
 +        "gridName": "test_sdf",
-+        "estimatedResidueCountRange": {
-+            "min": int(range_pair[0]),
-+            "max": int(range_pair[1]),
-+        },
++        "estimatedMinResidueLength": int(range_pair[0]),
++        "estimatedMaxResidueLength": int(range_pair[1]),
 +        "data": base64.b64encode(raw).decode("ascii"),
 +    }
 +
 +
 +def _write_list_schema_json(*, target_text=None, backbone_text=None, volumes=None):
 +    payload = {
-+        "format": "ProteinSketchOutput",
++        "format": "ProteinSketch2AI",
 +        "schemaVersion": 2,
-+        "target": []
++        "targets": []
 +        if target_text is None
 +        else [
 +            {
@@ -3459,10 +3480,10 @@ index 0000000..445268f
 +                "hotspots": ["A1"],
 +            }
 +        ],
-+        "backbone": []
++        "backbones": []
 +        if backbone_text is None
 +        else [{"format": "PDB", "encoding": "utf-8", "data": backbone_text}],
-+        "volume": [] if volumes is None else volumes,
++        "volumes": [] if volumes is None else volumes,
 +    }
 +    return _write_json(payload)
 +
@@ -3471,16 +3492,16 @@ index 0000000..445268f
 +    def test_sections_are_lists_not_legacy_objects(self):
 +        path = _write_json(
 +            {
-+                "format": "ProteinSketchOutput",
++                "format": "ProteinSketch2AI",
 +                "schemaVersion": 2,
-+                "target": [],
-+                "backbone": [],
-+                "volume": {"format": "OpenVDB", "encoding": "base64", "data": "AA=="},
++                "targets": [],
++                "backbones": [],
++                "volumes": {"format": "OpenVDB", "encoding": "base64", "data": "AA=="},
 +            }
 +        )
 +
 +        with self.assertRaisesRegex(ValueError, "must be a list"):
-+            volume_sketch.proteinsketch_section_items(path, "volume")
++            volume_sketch.proteinsketch_section_items(path, "volumes")
 +
 +    def test_modes_follow_empty_list_null_semantics(self):
 +        target = _pdb_ca("A", 2)
@@ -3822,10 +3843,10 @@ index 0000000..445268f
 +    unittest.main()
 diff --git a/tests/test_proteinsketch_two_step.py b/tests/test_proteinsketch_two_step.py
 new file mode 100644
-index 0000000..dcb5a23
+index 0000000..dd4a438
 --- /dev/null
 +++ b/tests/test_proteinsketch_two_step.py
-@@ -0,0 +1,315 @@
+@@ -0,0 +1,317 @@
 +import base64
 +import json
 +import os
@@ -3894,7 +3915,8 @@ index 0000000..dcb5a23
 +        return {
 +            "format": "OpenVDB",
 +            "encoding": "base64",
-+            "estimatedResidueCountRange": {"min": range_pair[0], "max": range_pair[1]},
++            "estimatedMinResidueLength": range_pair[0],
++            "estimatedMaxResidueLength": range_pair[1],
 +            "data": "AA==",
 +        }
 +    raw = _make_test_vdb_data(values)
@@ -3902,16 +3924,17 @@ index 0000000..dcb5a23
 +        "format": "OpenVDB",
 +        "encoding": "base64",
 +        "gridName": "test_sdf",
-+        "estimatedResidueCountRange": {"min": range_pair[0], "max": range_pair[1]},
++        "estimatedMinResidueLength": range_pair[0],
++        "estimatedMaxResidueLength": range_pair[1],
 +        "data": base64.b64encode(raw).decode("ascii"),
 +    }
 +
 +
 +def _write_json(*, target=True, volume=True):
 +    payload = {
-+        "format": "ProteinSketchOutput",
++        "format": "ProteinSketch2AI",
 +        "schemaVersion": 2,
-+        "target": []
++        "targets": []
 +        if not target
 +        else [
 +            {
@@ -3921,10 +3944,10 @@ index 0000000..dcb5a23
 +                "hotspots": ["A1"],
 +            }
 +        ],
-+        "backbone": [],
-+        "volume": [] if not volume else [_volume_item()],
++        "backbones": [],
++        "volumes": [] if not volume else [_volume_item()],
 +    }
-+    handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
++    handle = tempfile.NamedTemporaryFile("w", suffix=".ps2ai", delete=False)
 +    json.dump(payload, handle)
 +    handle.close()
 +    return Path(handle.name)
@@ -3945,7 +3968,7 @@ index 0000000..dcb5a23
 +        configure_monomer_stage(
 +            sampler,
 +            target_pdb=Path("target.pdb"),
-+            sketch_json=Path("sketch.json"),
++            sketch_json=Path("sketch.ps2ai"),
 +            monomer_contig="[6-7]",
 +            monomer_output_prefix=Path("outputs/monomer"),
 +            num_designs=3,
@@ -3959,7 +3982,7 @@ index 0000000..dcb5a23
 +            sketch_json_volume_index=1,
 +        )
 +
-+        self.assertEqual(sampler.inf_conf.sketch_json, "sketch.json")
++        self.assertEqual(sampler.inf_conf.sketch_json, "sketch.ps2ai")
 +        self.assertEqual(sampler.inf_conf.sketch_json_volume_index, 1)
 +        self.assertEqual(sampler.contig_conf.contigs, ["6-7"])
 +        self.assertEqual(
@@ -3974,7 +3997,7 @@ index 0000000..dcb5a23
 +            sampler,
 +            target_pdb=Path("target.pdb"),
 +            intermediate_pdb=Path("intermediate.pdb"),
-+            sketch_json=Path("sketch.json"),
++            sketch_json=Path("sketch.ps2ai"),
 +            binder_contig="[6-6/0 B1-20]",
 +            binder_output_prefix=Path("outputs/binder"),
 +            design_startnum=2,
@@ -4048,7 +4071,7 @@ index 0000000..dcb5a23
 +    def test_shell_points_centering_uses_json_vdb(self):
 +        payload_path = _write_json()
 +        payload = json.loads(payload_path.read_text(encoding="utf-8"))
-+        payload["volume"] = [
++        payload["volumes"] = [
 +            _volume_item(
 +                [
 +                    ((4, 0, 0), -0.5),
@@ -4083,7 +4106,7 @@ index 0000000..dcb5a23
 +    def test_binder_volume_sketch_points_are_per_design(self):
 +        sketch_json = _write_json()
 +        payload = json.loads(sketch_json.read_text(encoding="utf-8"))
-+        payload["volume"] = [_volume_item([((0, 0, 0), -0.5)])]
++        payload["volumes"] = [_volume_item([((0, 0, 0), -0.5)])]
 +        sketch_json.write_text(json.dumps(payload), encoding="utf-8")
 +        points, geometries = volume_sketch.volume_sketch_points(sketch_json)
 +        outdir = Path(tempfile.mkdtemp())

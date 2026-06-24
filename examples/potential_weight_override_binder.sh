@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # Run against an RFdiffusion repository after applying px-rfdiffusion.patch.
-# This one-step example is for ProteinSketch JSON with target and volume.
+# This one-step example is for ProteinSketch2AI .ps2ai input with targets and volumes.
 # Example:
-#   RFDIFFUSION_DIR=/path/to/RFdiffusion SKETCH_JSON=/path/to/BINDER_VDB.json BINDER_SHELL_WEIGHT=0.2 bash examples/potential_weight_override_binder.sh
+#   RFDIFFUSION_DIR=/path/to/RFdiffusion SKETCH_PS2AI=/path/to/BINDER_VDB.ps2ai BINDER_SHELL_WEIGHT=0.2 bash examples/potential_weight_override_binder.sh
 
-: "${SKETCH_JSON:?Set SKETCH_JSON=/path/to/BINDER_VDB.json}"
+: "${SKETCH_PS2AI:?Set SKETCH_PS2AI=/path/to/BINDER_VDB.ps2ai}"
 
 RFDIFFUSION_DIR="${RFDIFFUSION_DIR:-$(pwd)}"
 OUTPUT_PREFIX="${OUTPUT_PREFIX:-outputs/examples/weight_override_binder/design}"
@@ -23,7 +23,7 @@ fi
 cd "${RFDIFFUSION_DIR}"
 
 python scripts/run_inference.py --config-name voxel \
-  "inference.sketch_json=${SKETCH_JSON}" \
+  "inference.sketch_json=${SKETCH_PS2AI}" \
   "inference.output_prefix=${OUTPUT_PREFIX}" \
   "inference.num_designs=${NUM_DESIGNS}" \
   "potentials.guiding_potentials=[\"type:volume_sketch_binder_shell_ncontacts,weight:${BINDER_SHELL_WEIGHT}\",\"type:volume_sketch_shell_nearest_binder_distance,weight:${BINDER_DISTANCE_WEIGHT}\",\"type:interface_ncontacts,weight:${INTERFACE_WEIGHT}\"]"

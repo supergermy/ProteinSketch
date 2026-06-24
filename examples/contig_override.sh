@@ -3,11 +3,11 @@ set -euo pipefail
 
 # Run against an RFdiffusion repository after applying px-rfdiffusion.patch.
 # Example:
-#   RFDIFFUSION_DIR=/path/to/RFdiffusion SKETCH_JSON=/path/to/PROTEINSKETCH_VDB.json CONTIG='120-140' bash examples/contig_override.sh
-# For binder JSON, CONTIG can include the target side, for example:
+#   RFDIFFUSION_DIR=/path/to/RFdiffusion SKETCH_PS2AI=/path/to/PROTEINSKETCH_VDB.ps2ai CONTIG='120-140' bash examples/contig_override.sh
+# For binder .ps2ai input, CONTIG can include the target side, for example:
 #   CONTIG='A1-90/0 80-110'
 
-: "${SKETCH_JSON:?Set SKETCH_JSON=/path/to/PROTEINSKETCH_VDB.json}"
+: "${SKETCH_PS2AI:?Set SKETCH_PS2AI=/path/to/PROTEINSKETCH_VDB.ps2ai}"
 : "${CONTIG:?Set CONTIG, for example CONTIG='120-140'}"
 
 RFDIFFUSION_DIR="${RFDIFFUSION_DIR:-$(pwd)}"
@@ -22,7 +22,7 @@ fi
 cd "${RFDIFFUSION_DIR}"
 
 python scripts/run_inference.py --config-name voxel \
-  "inference.sketch_json=${SKETCH_JSON}" \
+  "inference.sketch_json=${SKETCH_PS2AI}" \
   "inference.output_prefix=${OUTPUT_PREFIX}" \
   "inference.num_designs=${NUM_DESIGNS}" \
   "contigmap.contigs=[${CONTIG}]"

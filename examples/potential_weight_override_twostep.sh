@@ -25,7 +25,7 @@ fi
 cd "${RFDIFFUSION_DIR}"
 
 python scripts/two-step/run_inference_json_twostep.py \
-  "inference.sketch_json=${SKETCH_PS2AI}" \
+  "inference.sketch_input=${SKETCH_PS2AI}" \
   "inference.output_prefix=${OUTPUT_PREFIX}" \
   "inference.num_designs=${NUM_DESIGNS}" \
   "--monomer-shell-weight=${MONOMER_SHELL_WEIGHT}" \

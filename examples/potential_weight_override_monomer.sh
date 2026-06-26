@@ -22,7 +22,7 @@ fi
 cd "${RFDIFFUSION_DIR}"
 
 python scripts/run_inference.py --config-name voxel \
-  "inference.sketch_json=${SKETCH_PS2AI}" \
+  "inference.sketch_input=${SKETCH_PS2AI}" \
   "inference.output_prefix=${OUTPUT_PREFIX}" \
   "inference.num_designs=${NUM_DESIGNS}" \
   "potentials.guiding_potentials=[\"type:volume_sketch_monomer_shell_ncontacts,weight:${MONOMER_SHELL_WEIGHT}\",\"type:volume_sketch_shell_nearest_monomer_distance,weight:${MONOMER_DISTANCE_WEIGHT}\"]"

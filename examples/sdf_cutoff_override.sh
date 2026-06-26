@@ -22,9 +22,9 @@ fi
 cd "${RFDIFFUSION_DIR}"
 
 python scripts/run_inference.py --config-name voxel \
-  "inference.sketch_json=${SKETCH_PS2AI}" \
+  "inference.sketch_input=${SKETCH_PS2AI}" \
   "inference.output_prefix=${OUTPUT_PREFIX}" \
   "inference.num_designs=${NUM_DESIGNS}" \
   "inference.volume_sketch_cutoff=${SDF_CUTOFF}" \
   "inference.volume_sketch_max_sdf=${SDF_MAX_SDF}" \
-  "inference.sketch_json_volume_index=${VOLUME_INDEX}"
+  "inference.sketch_input_volume_index=${VOLUME_INDEX}"

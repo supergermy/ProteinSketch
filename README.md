@@ -77,18 +77,19 @@ conda install conda-forge::openvdb
 Apply the patch from this repository:
 
 ```bash
-curl -fsSL -o /tmp/proteinsketch-rfdiffusion.patch \
+curl -fsSL -o proteinsketch-rfdiffusion.patch \
   https://raw.githubusercontent.com/supergermy/ProteinSketch/main/patches/px-rfdiffusion.patch
 
-git apply --whitespace=nowarn --check /tmp/proteinsketch-rfdiffusion.patch
-git apply --whitespace=nowarn /tmp/proteinsketch-rfdiffusion.patch
+git apply --whitespace=nowarn --check proteinsketch-rfdiffusion.patch
+git apply --whitespace=nowarn proteinsketch-rfdiffusion.patch
+rm proteinsketch-rfdiffusion.patch
 ```
 
 ----
 
 # Usage
 
-ProteinSketch adds a ProteinSketch2AI `.ps2ai` interface to RFdiffusion. The `.ps2ai` file is JSON-formatted internally. The main entry point is still RFdiffusion's inference script, and designs are conditioned through the existing `inference.sketch_json` option.
+ProteinSketch adds a ProteinSketch2AI `.ps2ai` interface to RFdiffusion. The `.ps2ai` file is JSON-formatted internally. The main entry point is still RFdiffusion's inference script, and designs are conditioned through the existing `inference.sketch_input` option.
 
 ## ProteinSketch2AI input
 
@@ -143,7 +144,7 @@ targets!=[] backbones!=[]              -> binder partial diffusion
 If a `.ps2ai` file contains multiple volume entries, ProteinSketch uses `volumes[0]` by default. Another entry can be selected with:
 
 ```text
-inference.sketch_json_volume_index=<index>
+inference.sketch_input_volume_index=<index>
 ```
 
 ## Running volume-conditioned monomer or binder design
@@ -152,7 +153,7 @@ To run RFdiffusion with a ProteinSketch2AI `.ps2ai` file:
 
 ```bash
 python scripts/run_inference.py --config-name voxel \
-  inference.sketch_json=/path/to/PROTEINSKETCH_VDB.ps2ai \
+  inference.sketch_input=/path/to/PROTEINSKETCH_VDB.ps2ai \
   inference.output_prefix=outputs/ps2ai_vdb/design \
   inference.num_designs=2
 ```
@@ -163,7 +164,7 @@ ProteinSketch can infer `contigmap.contigs` from `estimatedMinResidueLength` and
 
 ```bash
 python scripts/run_inference.py --config-name voxel \
-  inference.sketch_json=/path/to/PROTEINSKETCH_VDB.ps2ai \
+  inference.sketch_input=/path/to/PROTEINSKETCH_VDB.ps2ai \
   'contigmap.contigs=[150-170]' \
   inference.output_prefix=outputs/ps2ai_vdb/custom_length \
   inference.num_designs=2
@@ -175,7 +176,7 @@ For target + volume binder design, the two-step workflow is recommended:
 
 ```bash
 python scripts/two-step/run_inference_json_twostep.py \
-  inference.sketch_json=/path/to/PROTEINSKETCH_VDB.ps2ai \
+  inference.sketch_input=/path/to/PROTEINSKETCH_VDB.ps2ai \
   inference.output_prefix=outputs/ps2ai_two_step/binder \
   inference.num_designs=2
 ```
@@ -209,7 +210,7 @@ examples/contig_override.sh
 These examples show how to:
 
 - change the VDB SDF shell band with `inference.volume_sketch_cutoff`
-- select a volume entry with `inference.sketch_json_volume_index`
+- select a volume entry with `inference.sketch_input_volume_index`
 - override monomer and binder volume-potential weights
 - override interface weights for binder design
 - manually override inferred `contigmap.contigs`

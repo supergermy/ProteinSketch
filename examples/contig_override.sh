@@ -22,7 +22,7 @@ fi
 cd "${RFDIFFUSION_DIR}"
 
 python scripts/run_inference.py --config-name voxel \
-  "inference.sketch_json=${SKETCH_PS2AI}" \
+  "inference.sketch_input=${SKETCH_PS2AI}" \
   "inference.output_prefix=${OUTPUT_PREFIX}" \
   "inference.num_designs=${NUM_DESIGNS}" \
   "contigmap.contigs=[${CONTIG}]"

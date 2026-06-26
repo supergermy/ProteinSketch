@@ -8,9 +8,9 @@
 
 ProteinSketch is a VR-assisted protein design workflow for translating a designer's spatial intent into protein with RFdiffusion. Designers can sketch backbone topologies and volumetric envelopes in 3D, then use those sketches to guide *de novo* monomer design, binder design, and partial-diffusion refinement.
 
-This repository provides the RFdiffusion-side patch for ProteinSketch. It adds support for ProteinSketch2AI `.ps2ai` input, embedded OpenVDB SDF volumes, volume-guided potentials, inferred contig lengths from sketched envelopes, and sketch-derived partial diffusion.
+This repository provides the RFdiffusion-side patch for ProteinSketch. It adds support for ProteinSketch `.ps2ai` input (it's just a JSON file) , embedded OpenVDB SDF volumes, volume-guided potentials, inferred contig lengths from sketched envelopes, and sketch-derived partial diffusion.
 
-ProteinSketch2AI `.ps2ai` input can be made from https://proteinsketch.app or https://proteinsketch.com with VR headset (non-VR version is coming soon).
+`.ps2ai` can be made from https://proteinsketch.app or https://proteinsketch.com with VR headset (non-VR version is coming soon).
 
 ## Documentation
 
@@ -30,7 +30,7 @@ For general RFdiffusion usage, model weights, and installation details, see the 
   - [Install OpenVDB support](#install-openvdb-support)
   - [Apply the ProteinSketch patch](#apply-the-proteinsketch-patch)
 - [Usage](#usage)
-  - [ProteinSketch2AI input](#proteinsketch2ai-input)
+  - [ProteinSketch input](#proteinsketch-input)
   - [Running volume-conditioned monomer or binder design](#running-volume-conditioned-monomer-or-binder-design)
   - [Two-step binder design](#two-step-binder-design)
   - [Partial diffusion for sketch refinement](#partial-diffusion-for-sketch-refinement)
@@ -89,11 +89,11 @@ rm proteinsketch-rfdiffusion.patch
 
 # Usage
 
-ProteinSketch adds a ProteinSketch2AI `.ps2ai` interface to RFdiffusion. The `.ps2ai` file is JSON-formatted internally. The main entry point is still RFdiffusion's inference script, and designs are conditioned through the existing `inference.sketch_input` option.
+The `.ps2ai` file is JSON-formatted internally. The main entry point is still RFdiffusion's inference script, and designs are conditioned through the existing `inference.sketch_input` option.
 
-## ProteinSketch2AI input
+## ProteinSketch input
 
-ProteinSketch2AI `.ps2ai` files can contain three major sections:
+The input file `.ps2ai` contains three major sections in JSON format:
 
 - `targets`: target PDB and optional hotspot residues for binder design
 - `backbones`: sketched backbone PDB for partial diffusion
@@ -141,7 +141,7 @@ targets=[]  backbones!=[]              -> monomer partial diffusion
 targets!=[] backbones!=[]              -> binder partial diffusion
 ```
 
-If a `.ps2ai` file contains multiple volume entries, ProteinSketch uses `volumes[0]` by default. Another entry can be selected with:
+Currently, if a `.ps2ai` file contains multiple volume entries, ProteinSketch uses `volumes[0]` by default. Another entry can be selected with:
 
 ```text
 inference.sketch_input_volume_index=<index>
@@ -149,7 +149,7 @@ inference.sketch_input_volume_index=<index>
 
 ## Running volume-conditioned monomer or binder design
 
-To run RFdiffusion with a ProteinSketch2AI `.ps2ai` file:
+To run RFdiffusion with a `.ps2ai` file:
 
 ```bash
 python scripts/run_inference.py --config-name voxel \
@@ -197,7 +197,7 @@ The `oneshot` configuration is intended for fast partial-diffusion refinement of
 
 ## Examples
 
-Example scripts are provided in `examples/`. Set `RFDIFFUSION_DIR` to a patched RFdiffusion checkout and `SKETCH_PS2AI` to a ProteinSketch2AI `.ps2ai` file before running them.
+Example scripts are provided in `examples/`. Set `RFDIFFUSION_DIR` to a patched RFdiffusion checkout and `SKETCH_PS2AI` to a ProteinSketch `.ps2ai` file before running them.
 
 ```text
 examples/sdf_cutoff_override.sh

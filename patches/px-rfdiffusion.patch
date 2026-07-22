@@ -2944,7 +2944,7 @@ index 0000000..66d4f01
 +    sketch = parser.add_argument_group("ProteinSketch VDB options")
 +    sketch.add_argument("--volume-sketch-cutoff", type=float, default=None)
 +    sketch.add_argument("--volume-sketch-max-sdf", type=float, default=None)
-+    sketch.add_argument("--sketch-json-volume-index", type=int, default=None)
++    sketch.add_argument("--sketch-input-volume-index", type=int, default=None)
 +
 +    filtering = parser.add_argument_group("monomer filter")
 +    filtering.add_argument("--chamfer-cutoff", type=float, default=9.0)
